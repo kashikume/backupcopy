@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use std::fs;
 use anyhow::Result;
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct ScanRules {
@@ -8,7 +8,7 @@ pub struct ScanRules {
 }
 
 #[derive(Debug)]
-enum RuleAction {
+pub enum RuleAction {
     Keep,
     Remove,
 }
@@ -32,21 +32,25 @@ impl ScanRules {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;
-            }
-            else if line.starts_with("skip:") || line.starts_with("remove:") || line.starts_with("-:") {
+            } else if line.starts_with("skip:")
+                || line.starts_with("remove:")
+                || line.starts_with("-:")
+            {
                 let start = line.find(':').unwrap();
-                let regex = line[start+1..].trim();
-                let rule = Rule{
+                let regex = line[start + 1..].trim();
+                let rule = Rule {
                     dir: file.parent().unwrap().to_path_buf(),
                     regex: String::from(regex),
                     action: RuleAction::Remove,
                 };
                 self.data.push(rule);
-            }
-            else if line.starts_with("keep:") || line.starts_with("add:") || line.starts_with("+:") {
+            } else if line.starts_with("keep:")
+                || line.starts_with("add:")
+                || line.starts_with("+:")
+            {
                 let start = line.find(':').unwrap();
-                let regex = line[start+1..].trim();
-                let rule = Rule{
+                let regex = line[start + 1..].trim();
+                let rule = Rule {
                     dir: file.parent().unwrap().to_path_buf(),
                     regex: String::from(regex),
                     action: RuleAction::Keep,
@@ -56,5 +60,9 @@ impl ScanRules {
         }
 
         Ok(())
+    }
+
+    pub fn calculate_action(&self, path: &PathBuf) -> RuleAction {
+        RuleAction::Keep
     }
 }

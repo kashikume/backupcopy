@@ -1,3 +1,4 @@
+pub mod analyzer;
 pub mod fsitem;
 pub mod fsscanner;
 pub mod scanresult;

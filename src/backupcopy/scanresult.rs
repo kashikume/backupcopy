@@ -4,13 +4,16 @@ use super::fsitem::FsItem;
 
 #[derive(Debug)]
 pub struct ScanResult {
-    base: PathBuf,
-    data: HashMap<PathBuf,FsItem>,
+    pub base: PathBuf,
+    pub data: HashMap<PathBuf, FsItem>,
 }
 
 impl ScanResult {
     pub fn new(base: PathBuf) -> ScanResult {
-        ScanResult { base, data: HashMap::new() }
+        ScanResult {
+            base,
+            data: HashMap::new(),
+        }
     }
 
     fn get_relative(&self, path: &PathBuf) -> PathBuf {
@@ -31,6 +34,6 @@ impl ScanResult {
     pub fn add_file(&mut self, path: PathBuf, size: u64, date: u64) {
         let relative = self.get_relative(&path);
         let file = FsItem::new_file(path, size, date);
-        self.data.insert(relative,file);
+        self.data.insert(relative, file);
     }
 }

@@ -44,4 +44,46 @@ impl FsItem {
             action: PlannedAction::Unknown,
         })
     }
+
+    pub fn set_action(&mut self, action: PlannedAction) {
+        match self {
+            Self::Directory(dir) => dir.action = action,
+            Self::File(file) => file.action = action,
+        }
+    }
+
+    pub fn is_file(&self) -> bool {
+        match self {
+            Self::Directory(_) => false,
+            Self::File(_) => true,
+        }
+    }
+
+    pub fn is_directory(&self) -> bool {
+        match self {
+            Self::Directory(_) => true,
+            Self::File(_) => false,
+        }
+    }
+
+    pub fn get_patch(&self) -> &PathBuf {
+        match self {
+            Self::Directory(dir) => &dir.path,
+            Self::File(file) => &file.path,
+        }
+    }
+
+    pub fn get_size(&self) -> u64 {
+        match self {
+            Self::Directory(_) => panic!("Directory do not have size."),
+            Self::File(file) => file.size,
+        }
+    }
+
+    pub fn get_date(&self) -> u64 {
+        match self {
+            Self::Directory(_) => panic!("Directory do not have date."),
+            Self::File(file) => file.date,
+        }
+    }
 }
