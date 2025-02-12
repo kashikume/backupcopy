@@ -22,8 +22,8 @@ impl FsScanner {
                     result.add_dir(path.clone());
                     dirs.push(path);
                 } else if metadata.is_file() {
-                    if path.file_name().unwrap() == ".backum_rules" {
-                        rules.add_rules(&path);
+                    if path.file_name().unwrap() == ".backup_rules" {
+                        rules.add_rules(&path)?;
                     }
                     result.add_file(path, metadata.len(), metadata.last_write_time());
                 }
