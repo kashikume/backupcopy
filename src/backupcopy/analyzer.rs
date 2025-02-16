@@ -1,4 +1,5 @@
 use super::fsitem::PlannedAction;
+use super::scanrules::RuleAction;
 use super::{scanresult::ScanResult, scanrules::ScanRules};
 
 pub struct Analyzer {}
@@ -15,10 +16,26 @@ impl Analyzer {
                         d.set_action(PlannedAction::Delete);
                     }
                 } else {
-                    d.set_action(PlannedAction::Ignore);
+                    d.set_action(match rules.evaluate(k) {
+                        RuleAction::Keep => PlannedAction::Ignore,
+                        RuleAction::Remove => PlannedAction::Delete,
+                    });
                 }
             } else {
                 d.set_action(PlannedAction::Delete);
+            }
+        }
+
+        for (k, s) in source.data.iter_mut() {
+            if destination.data.contains_key(k)
+                && destination.data[k].get_action() == PlannedAction::Ignore
+            {
+                s.set_action(PlannedAction::Ignore);
+            } else {
+                s.set_action(match rules.evaluate(k) {
+                    RuleAction::Keep => PlannedAction::Copy,
+                    RuleAction::Remove => PlannedAction::Ignore,
+                });
             }
         }
     }

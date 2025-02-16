@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlannedAction {
     Unknown,
     Ignore,
@@ -10,13 +10,13 @@ pub enum PlannedAction {
 
 #[derive(Debug)]
 pub struct FsDirectory {
-    pub path: PathBuf,
+    pub full_path: PathBuf,
     pub action: PlannedAction,
 }
 
 #[derive(Debug)]
 pub struct FsFile {
-    pub path: PathBuf,
+    pub full_path: PathBuf,
     pub size: u64,
     pub date: u64,
     pub action: PlannedAction,
@@ -29,16 +29,16 @@ pub enum FsItem {
 }
 
 impl FsItem {
-    pub fn new_directory(path: PathBuf) -> Self {
+    pub fn new_directory(full_path: PathBuf) -> Self {
         FsItem::Directory(FsDirectory {
-            path,
+            full_path,
             action: PlannedAction::Unknown,
         })
     }
 
-    pub fn new_file(path: PathBuf, size: u64, date: u64) -> Self {
+    pub fn new_file(full_path: PathBuf, size: u64, date: u64) -> Self {
         FsItem::File(FsFile {
-            path,
+            full_path,
             size,
             date,
             action: PlannedAction::Unknown,
@@ -49,6 +49,13 @@ impl FsItem {
         match self {
             Self::Directory(dir) => dir.action = action,
             Self::File(file) => file.action = action,
+        }
+    }
+
+    pub fn get_action(&self) -> PlannedAction {
+        match self {
+            Self::Directory(dir) => dir.action,
+            Self::File(file) => file.action,
         }
     }
 
@@ -66,10 +73,10 @@ impl FsItem {
         }
     }
 
-    pub fn get_patch(&self) -> &PathBuf {
+    pub fn get_full_path(&self) -> &PathBuf {
         match self {
-            Self::Directory(dir) => &dir.path,
-            Self::File(file) => &file.path,
+            Self::Directory(dir) => &dir.full_path,
+            Self::File(file) => &file.full_path,
         }
     }
 

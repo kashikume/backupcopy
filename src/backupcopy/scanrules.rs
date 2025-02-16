@@ -62,7 +62,7 @@ impl ScanRules {
         Ok(())
     }
 
-    pub fn calculate_action(&self, path: &PathBuf) -> RuleAction {
+    pub fn evaluate(&self, path: &PathBuf) -> RuleAction {
         RuleAction::Keep
     }
 }
