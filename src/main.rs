@@ -10,4 +10,5 @@ fn main() {
     // println!("source: {:?}", source);
     // println!("destination: {:?}", destination);
     Executor::execute(&source, &destination);
+    println!("All done. Thank you.");
 }

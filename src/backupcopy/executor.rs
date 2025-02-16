@@ -15,6 +15,9 @@ impl Executor {
             .map(|(_k, d)| d.get_full_path())
             .collect::<Vec<_>>();
         println!("Files to remove: {:?}", files_to_remove);
+        for f in files_to_remove {
+            fs::remove_file(f)?;
+        }
         Ok(())
     }
 
@@ -22,10 +25,15 @@ impl Executor {
         let dirs_to_remove = destination
             .data
             .iter()
-            .filter(|(k, d)| d.is_directory() && d.get_action() == PlannedAction::Delete)
-            .map(|(k, d)| d.get_full_path())
+            .filter(|(_k, d)| d.is_directory() && d.get_action() == PlannedAction::Delete)
+            .map(|(_k, d)| d.get_full_path())
             .collect::<Vec<_>>();
         println!("Directories to remove: {:?}", dirs_to_remove);
+
+        for d in dirs_to_remove {
+            fs::remove_dir(d)?;
+        }
+
         Ok(())
     }
 
@@ -56,7 +64,7 @@ impl Executor {
         let files_to_copy = source
             .data
             .iter()
-            .filter(|(k, f)| f.is_file() && f.get_action() == PlannedAction::Copy)
+            .filter(|(_k, f)| f.is_file() && f.get_action() == PlannedAction::Copy)
             .collect::<Vec<_>>();
 
         for (k, f) in files_to_copy {
