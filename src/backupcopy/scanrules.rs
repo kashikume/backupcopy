@@ -1,13 +1,14 @@
 use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
+use regex::Regex;
 
 #[derive(Debug)]
 pub struct ScanRules {
     data: Vec<Rule>,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum RuleAction {
     Keep,
     Remove,
@@ -16,7 +17,7 @@ pub enum RuleAction {
 #[derive(Debug)]
 struct Rule {
     dir: PathBuf,
-    regex: String,
+    regex: Regex,
     action: RuleAction,
 }
 
@@ -40,7 +41,7 @@ impl ScanRules {
                 let regex = line[start + 1..].trim();
                 let rule = Rule {
                     dir: file.parent().unwrap().to_path_buf(),
-                    regex: String::from(regex),
+                    regex: Regex::new(regex)?,
                     action: RuleAction::Remove,
                 };
                 self.data.push(rule);
@@ -52,7 +53,7 @@ impl ScanRules {
                 let regex = line[start + 1..].trim();
                 let rule = Rule {
                     dir: file.parent().unwrap().to_path_buf(),
-                    regex: String::from(regex),
+                    regex: Regex::new(regex)?,
                     action: RuleAction::Keep,
                 };
                 self.data.push(rule);
@@ -63,6 +64,17 @@ impl ScanRules {
     }
 
     pub fn evaluate(&self, path: &PathBuf) -> RuleAction {
+
+        for r in  self.data.iter() {
+            if path.starts_with(&r.dir) {
+                let p1: PathBuf = path.iter().skip(r.dir.iter().count()).collect();
+                let s = p1.to_str().unwrap();
+                if r.regex.is_match(&s) {
+                    return r.action;
+                }
+            }
+        }
+
         RuleAction::Keep
     }
 }
