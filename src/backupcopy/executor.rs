@@ -1,5 +1,5 @@
 use std::fs;
-use std::{iter::Scan, path::PathBuf};
+use std::path::PathBuf;
 
 use super::{fsitem::PlannedAction, scanresult::ScanResult};
 use anyhow::Result;

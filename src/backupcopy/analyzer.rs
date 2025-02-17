@@ -14,6 +14,8 @@ impl Analyzer {
                 } else if s.is_file() && d.is_file() {
                     if s.get_date() > d.get_date() || s.get_size() != d.get_size() {
                         d.set_action(PlannedAction::Delete);
+                    } else {
+                        d.set_action(PlannedAction::Ignore);
                     }
                 } else {
                     d.set_action(match rules.evaluate(k) {
