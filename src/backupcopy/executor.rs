@@ -14,9 +14,13 @@ impl Executor {
             .filter(|(_k, d)| d.is_file() && d.get_action() == PlannedAction::Delete)
             .map(|(_k, d)| d.get_full_path())
             .collect::<Vec<_>>();
-        println!("Files to remove: {:?}", files_to_remove);
+        // println!("Files to remove: {:?}", files_to_remove);
         for f in files_to_remove {
-            fs::remove_file(f)?;
+            print!("Remove: {:?} ... ", f);
+            match fs::remove_file(f) {
+                Ok(_) => println!("OK"),
+                Err(e) => println!("Error: {:?}", e),
+            }
         }
         Ok(())
     }
@@ -28,10 +32,14 @@ impl Executor {
             .filter(|(_k, d)| d.is_directory() && d.get_action() == PlannedAction::Delete)
             .map(|(_k, d)| d.get_full_path())
             .collect::<Vec<_>>();
-        println!("Directories to remove: {:?}", dirs_to_remove);
+        // println!("Directories to remove: {:?}", dirs_to_remove);
 
         for d in dirs_to_remove {
-            fs::remove_dir(d)?;
+            print!("Remove: {:?} ... ", d);
+            match fs::remove_dir(d) {
+                Ok(_) => println!("OK"),
+                Err(e) => println!("Error: {:?}", e),
+            }
         }
 
         Ok(())

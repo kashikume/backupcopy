@@ -9,16 +9,19 @@ impl Analyzer {
         for (k, d) in destination.data.iter_mut() {
             if source.data.contains_key(k) {
                 let s = &source.data[k];
-                if s.is_file() && d.is_directory() {
+                if (s.is_file() && d.is_directory()) || (s.is_directory() && d.is_file()) {
                     d.set_action(PlannedAction::Delete);
                 } else if s.is_file() && d.is_file() {
-                    if s.get_date() > d.get_date() || s.get_size() != d.get_size() {
+                    if s.get_date() > d.get_date()
+                        || s.get_size() != d.get_size()
+                        || rules.evaluate(s.get_full_path()) == RuleAction::Remove
+                    {
                         d.set_action(PlannedAction::Delete);
                     } else {
                         d.set_action(PlannedAction::Ignore);
                     }
                 } else {
-                    d.set_action(match rules.evaluate(k) {
+                    d.set_action(match rules.evaluate(s.get_full_path()) {
                         RuleAction::Keep => PlannedAction::Ignore,
                         RuleAction::Remove => PlannedAction::Delete,
                     });
@@ -34,7 +37,7 @@ impl Analyzer {
             {
                 s.set_action(PlannedAction::Ignore);
             } else {
-                s.set_action(match rules.evaluate(k) {
+                s.set_action(match rules.evaluate(s.get_full_path()) {
                     RuleAction::Keep => PlannedAction::Copy,
                     RuleAction::Remove => PlannedAction::Ignore,
                 });

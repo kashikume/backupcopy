@@ -1,14 +1,14 @@
 use anyhow::Result;
+use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
-use regex::Regex;
 
 #[derive(Debug)]
 pub struct ScanRules {
     data: Vec<Rule>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RuleAction {
     Keep,
     Remove,
@@ -64,17 +64,24 @@ impl ScanRules {
     }
 
     pub fn evaluate(&self, path: &PathBuf) -> RuleAction {
-
-        for r in  self.data.iter() {
+        let mut action = None;
+        for r in self.data.iter() {
             if path.starts_with(&r.dir) {
                 let p1: PathBuf = path.iter().skip(r.dir.iter().count()).collect();
                 let s = p1.to_str().unwrap();
                 if r.regex.is_match(&s) {
-                    return r.action;
+                    action = Some(r.action);
+                    if r.action == RuleAction::Keep {
+                        break;
+                    }
                 }
             }
         }
 
-        RuleAction::Keep
+        if action.is_none() {
+            action = Some(RuleAction::Keep);
+        }
+
+        action.unwrap()
     }
 }
