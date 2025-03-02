@@ -59,7 +59,7 @@ impl Executor {
 
         dirs_to_create.sort();
 
-        println!("Directories to create: {:?}", dirs_to_create);
+        // println!("Directories to create: {:?}", dirs_to_create);
         for d in dirs_to_create.iter() {
             println!("Create directory: {:?}", d);
             fs::create_dir(d)?;
