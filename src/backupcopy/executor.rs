@@ -79,8 +79,11 @@ impl Executor {
             let copy_from = f.get_full_path();
             let mut copy_to = base.clone();
             copy_to.push(k);
-            println!("Copy {:?} to {:?}", copy_from, copy_to);
-            fs::copy(copy_from, copy_to)?;
+            print!("Copy {:?} to {:?}", copy_from, copy_to);
+            match fs::copy(copy_from, copy_to) {
+                Ok(_) => println!(" ... OK"),
+                Err(e) => println!(" ... Error: {:?}", e),
+            }
         }
 
         Ok(())
