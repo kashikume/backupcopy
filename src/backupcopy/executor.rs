@@ -26,13 +26,15 @@ impl Executor {
     }
 
     fn remove_directories(destination: &ScanResult) -> Result<()> {
-        let dirs_to_remove = destination
+        let mut dirs_to_remove = destination
             .data
             .iter()
             .filter(|(_k, d)| d.is_directory() && d.get_action() == PlannedAction::Delete)
             .map(|(_k, d)| d.get_full_path())
             .collect::<Vec<_>>();
         // println!("Directories to remove: {:?}", dirs_to_remove);
+
+        dirs_to_remove.sort_by(|a, b| b.as_os_str().len().cmp(&a.as_os_str().len()));
 
         for d in dirs_to_remove {
             print!("Remove: {:?} ... ", d);
