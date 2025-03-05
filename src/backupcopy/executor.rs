@@ -1,13 +1,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use super::{fsitem::PlannedAction, scanresult::ScanResult};
+use super::{arguments::Arguments, fsitem::PlannedAction, scanresult::ScanResult};
 use anyhow::Result;
 
 pub struct Executor {}
 
 impl Executor {
-    fn remove_files(destination: &ScanResult) -> Result<()> {
+    fn remove_files(destination: &ScanResult, arguments: &Arguments) -> Result<()> {
         let files_to_remove = destination
             .data
             .iter()
@@ -17,6 +17,17 @@ impl Executor {
         // println!("Files to remove: {:?}", files_to_remove);
         for f in files_to_remove {
             print!("Remove: {:?} ... ", f);
+            if arguments.remove_ro {
+                let mut perms = fs::metadata(&f)?.permissions();
+                if perms.readonly() {
+                    print!("remove readonly flag ... ");
+                    perms.set_readonly(false);
+                    match fs::set_permissions(&f, perms) {
+                        Ok(_) => (),
+                        Err(e) => println!("Error: {:?}", e),
+                    }
+                }
+            }
             match fs::remove_file(f) {
                 Ok(_) => println!("OK"),
                 Err(e) => println!("Error: {:?}", e),
@@ -91,8 +102,12 @@ impl Executor {
         Ok(())
     }
 
-    pub fn execute(source: &ScanResult, destination: &ScanResult) -> Result<()> {
-        Self::remove_files(destination)?;
+    pub fn execute(
+        source: &ScanResult,
+        destination: &ScanResult,
+        arguments: &Arguments,
+    ) -> Result<()> {
+        Self::remove_files(destination, arguments)?;
         Self::remove_directories(destination)?;
         Self::create_directories(source, &destination.base)?;
         Self::copy_files(source, &destination.base)?;

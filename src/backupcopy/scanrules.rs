@@ -60,6 +60,16 @@ impl ScanRules {
             }
         }
 
+        self.data.sort_by(|a, b| {
+            if a.action == b.action {
+                return a.dir.cmp(&b.dir);
+            }
+            if a.action == RuleAction::Keep {
+                return std::cmp::Ordering::Less;
+            }
+            std::cmp::Ordering::Greater
+        });
+
         Ok(())
     }
 
