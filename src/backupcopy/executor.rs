@@ -88,15 +88,18 @@ impl Executor {
             .filter(|(_k, f)| f.is_file() && f.get_action() == PlannedAction::Copy)
             .collect::<Vec<_>>();
 
+        let mut counter = 1usize;
+        let total = files_to_copy.len();
         for (k, f) in files_to_copy {
             let copy_from = f.get_full_path();
             let mut copy_to = base.clone();
             copy_to.push(k);
-            print!("Copy {:?} to {:?}", copy_from, copy_to);
+            print!("{}/{} Copy {:?} to {:?}", counter, total, copy_from, copy_to);
             match fs::copy(copy_from, copy_to) {
                 Ok(_) => println!(" ... OK"),
                 Err(e) => println!(" ... Error: {:?}", e),
             }
+            counter += 1;
         }
 
         Ok(())
