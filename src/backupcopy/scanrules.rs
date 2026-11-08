@@ -29,7 +29,11 @@ impl ScanRules {
     pub fn add_rules(&mut self, file: &PathBuf) -> Result<()> {
         let content = fs::read_to_string(file)
             .with_context(|| format!("Cannot read rules file {:?}", file))?;
+        self.add_rules_from_str(file, &content)
+    }
 
+    /// Parses rules from `content` as if they were read from `file`.
+    pub fn add_rules_from_str(&mut self, file: &PathBuf, content: &str) -> Result<()> {
         for (index, line) in content.lines().enumerate() {
             let line = line.trim();
             let action = if line.is_empty() || line.starts_with('#') {
@@ -118,5 +122,137 @@ impl ScanRules {
         }
 
         action.unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rules(file: &str, content: &str) -> ScanRules {
+        let mut r = ScanRules::new();
+        r.add_rules_from_str(&PathBuf::from(file), content).unwrap();
+        r
+    }
+
+    fn eval(r: &ScanRules, path: &str) -> RuleAction {
+        r.evaluate(&PathBuf::from(path))
+    }
+
+    #[test]
+    fn no_rules_keeps_everything() {
+        let r = ScanRules::new();
+        assert_eq!(eval(&r, r"C:\src\a.txt"), RuleAction::Keep);
+    }
+
+    #[test]
+    fn all_remove_prefixes() {
+        for prefix in ["skip:", "remove:", "-:"] {
+            let r = rules(r"C:\src\.backup_rules", &format!(r"{} \.tmp$", prefix));
+            assert_eq!(eval(&r, r"C:\src\a.tmp"), RuleAction::Remove, "{}", prefix);
+            assert_eq!(eval(&r, r"C:\src\a.txt"), RuleAction::Keep, "{}", prefix);
+        }
+    }
+
+    #[test]
+    fn all_keep_prefixes_override_remove() {
+        for prefix in ["keep:", "add:", "+:"] {
+            let r = rules(
+                r"C:\src\.backup_rules",
+                &format!("-: \\.log$\n{} ^important\\.log$", prefix),
+            );
+            assert_eq!(eval(&r, r"C:\src\important.log"), RuleAction::Keep, "{}", prefix);
+            assert_eq!(eval(&r, r"C:\src\other.log"), RuleAction::Remove, "{}", prefix);
+        }
+    }
+
+    #[test]
+    fn keep_wins_regardless_of_order_and_file() {
+        let mut r = ScanRules::new();
+        r.add_rules_from_str(&PathBuf::from(r"C:\src\sub\.backup_rules"), "-: .*")
+            .unwrap();
+        r.add_rules_from_str(&PathBuf::from(r"C:\src\.backup_rules"), "+: keep")
+            .unwrap();
+        assert_eq!(eval(&r, r"C:\src\sub\keep.txt"), RuleAction::Keep);
+        assert_eq!(eval(&r, r"C:\src\sub\other.txt"), RuleAction::Remove);
+    }
+
+    #[test]
+    fn comments_blank_lines_and_whitespace() {
+        let r = rules(
+            r"C:\src\.backup_rules",
+            "# comment\n\n   \n   -:    \\.tmp$   \r\n",
+        );
+        assert_eq!(eval(&r, r"C:\src\a.tmp"), RuleAction::Remove);
+        assert_eq!(eval(&r, r"C:\src\a.txt"), RuleAction::Keep);
+    }
+
+    #[test]
+    fn regex_is_matched_against_path_relative_to_rules_dir() {
+        let r = rules(r"C:\src\.backup_rules", r"-: ^build(\\|$)");
+        assert_eq!(eval(&r, r"C:\src\build"), RuleAction::Remove);
+        assert_eq!(eval(&r, r"C:\src\build\app.exe"), RuleAction::Remove);
+        assert_eq!(eval(&r, r"C:\src\sub\build"), RuleAction::Keep);
+        assert_eq!(eval(&r, r"C:\src\buildscript.rs"), RuleAction::Keep);
+    }
+
+    #[test]
+    fn unanchored_regex_matches_anywhere() {
+        let r = rules(r"C:\src\.backup_rules", "-: tmp");
+        assert_eq!(eval(&r, r"C:\src\dir\mytmpfile.rs"), RuleAction::Remove);
+    }
+
+    #[test]
+    fn rules_apply_only_below_their_directory() {
+        let r = rules(r"C:\src\sub\.backup_rules", "-: .*");
+        assert_eq!(eval(&r, r"C:\src\sub\a.txt"), RuleAction::Remove);
+        assert_eq!(eval(&r, r"C:\src\other\a.txt"), RuleAction::Keep);
+        assert_eq!(eval(&r, r"C:\src\a.txt"), RuleAction::Keep);
+    }
+
+    #[test]
+    fn rules_dir_prefix_is_matched_by_component() {
+        let r = rules(r"C:\src\sub\.backup_rules", "-: .*");
+        assert_eq!(eval(&r, r"C:\src\subway\a.txt"), RuleAction::Keep);
+    }
+
+    #[test]
+    fn invalid_regex_is_an_error() {
+        let mut r = ScanRules::new();
+        let e = r
+            .add_rules_from_str(&PathBuf::from(r"C:\src\.backup_rules"), "# c\n-: (unclosed")
+            .unwrap_err();
+        let msg = e.to_string();
+        assert!(msg.contains("Invalid regular expression"), "{}", msg);
+        assert!(msg.contains("line 2"), "{}", msg);
+    }
+
+    #[test]
+    fn unknown_prefix_is_an_error() {
+        let mut r = ScanRules::new();
+        let e = r
+            .add_rules_from_str(&PathBuf::from(r"C:\src\.backup_rules"), "-: ok\nskp: x")
+            .unwrap_err();
+        let msg = e.to_string();
+        assert!(msg.contains("Invalid rule"), "{}", msg);
+        assert!(msg.contains("line 2"), "{}", msg);
+        assert!(msg.contains("skp: x"), "{}", msg);
+    }
+
+    #[test]
+    fn line_without_colon_is_an_error() {
+        let mut r = ScanRules::new();
+        assert!(r
+            .add_rules_from_str(&PathBuf::from(r"C:\src\.backup_rules"), "skip")
+            .is_err());
+    }
+
+    #[test]
+    fn missing_rules_file_is_an_error() {
+        let mut r = ScanRules::new();
+        let e = r
+            .add_rules(&PathBuf::from(r"C:\does\not\exist\.backup_rules"))
+            .unwrap_err();
+        assert!(e.to_string().contains("Cannot read rules file"));
     }
 }

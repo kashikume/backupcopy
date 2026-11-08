@@ -184,9 +184,12 @@ skip: ^cache(\\|$)
 
 ## Read-only files
 
-Copying keeps the source file's read-only attribute. When a read-only file later changes or is
-removed from the source, deleting the old copy in the destination fails unless you pass
-`--remove-ro`, which clears the attribute before the delete.
+Copying keeps the source file's read-only attribute, so the destination can hold read-only files
+that later have to be deleted. `--remove-ro` clears the attribute before each delete.
+
+Whether you need it depends on the Rust version the tool was built with: older standard libraries
+refuse to delete read-only files on Windows, while recent ones (such as Rust 1.99) delete them
+anyway.
 
 ## License
 
