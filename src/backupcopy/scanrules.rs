@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
@@ -27,37 +27,54 @@ impl ScanRules {
     }
 
     pub fn add_rules(&mut self, file: &PathBuf) -> Result<()> {
-        let content = fs::read_to_string(file)?;
+        let content = fs::read_to_string(file)
+            .with_context(|| format!("Cannot read rules file {:?}", file))?;
 
-        for line in content.lines() {
+        for (index, line) in content.lines().enumerate() {
             let line = line.trim();
-            if line.is_empty() || line.starts_with('#') {
+            let action = if line.is_empty() || line.starts_with('#') {
                 continue;
             } else if line.starts_with("skip:")
                 || line.starts_with("remove:")
                 || line.starts_with("-:")
             {
-                let start = line.find(':').unwrap();
-                let regex = line[start + 1..].trim();
-                let rule = Rule {
-                    dir: file.parent().unwrap().to_path_buf(),
-                    regex: Regex::new(regex)?,
-                    action: RuleAction::Remove,
-                };
-                self.data.push(rule);
+                RuleAction::Remove
             } else if line.starts_with("keep:")
                 || line.starts_with("add:")
                 || line.starts_with("+:")
             {
-                let start = line.find(':').unwrap();
-                let regex = line[start + 1..].trim();
-                let rule = Rule {
-                    dir: file.parent().unwrap().to_path_buf(),
-                    regex: Regex::new(regex)?,
-                    action: RuleAction::Keep,
-                };
-                self.data.push(rule);
-            }
+                RuleAction::Keep
+            } else {
+                Self::print_file_with_error(file, &content, index);
+                return Err(anyhow!(
+                    "Invalid rule in rules file {:?}, line {}: {}\n\
+                     A rule must start with one of: skip:, remove:, -:, keep:, add:, +:",
+                    file,
+                    index + 1,
+                    line
+                ));
+            };
+
+            let start = line.find(':').unwrap();
+            let regex = line[start + 1..].trim();
+            let regex = match Regex::new(regex) {
+                Ok(regex) => regex,
+                Err(e) => {
+                    Self::print_file_with_error(file, &content, index);
+                    return Err(anyhow!(
+                        "Invalid regular expression in rules file {:?}, line {}: {}\n{}",
+                        file,
+                        index + 1,
+                        line,
+                        e
+                    ));
+                }
+            };
+            self.data.push(Rule {
+                dir: file.parent().unwrap().to_path_buf(),
+                regex,
+                action,
+            });
         }
 
         self.data.sort_by(|a, b| {
@@ -71,6 +88,14 @@ impl ScanRules {
         });
 
         Ok(())
+    }
+
+    fn print_file_with_error(file: &PathBuf, content: &str, error_index: usize) {
+        println!("Error in rules file {:?}:", file);
+        for (index, line) in content.lines().enumerate() {
+            let marker = if index == error_index { ">>" } else { "  " };
+            println!("{} {:4} | {}", marker, index + 1, line);
+        }
     }
 
     pub fn evaluate(&self, path: &PathBuf) -> RuleAction {

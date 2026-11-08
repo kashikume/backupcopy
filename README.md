@@ -118,9 +118,10 @@ One rule per line:
 | `keep:`, `add:`, `+:`         | **Include** matching items, overriding any exclusion |
 
 - Blank lines and lines that start with `#` are ignored.
-- Lines with any other prefix are silently ignored.
 - Spaces around the line and after the colon are trimmed.
-- An invalid regular expression stops the run with an error.
+- A line with any other prefix, or with an invalid regular expression, stops the run before
+  anything is copied or deleted. The tool prints the rules file with the bad line marked `>>`,
+  followed by the line number and the details of the error.
 
 ### How matching works
 
