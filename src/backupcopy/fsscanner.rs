@@ -1,6 +1,6 @@
 use super::scanresult::ScanResult;
 use super::scanrules::ScanRules;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::{fs, os::windows::fs::MetadataExt, path::PathBuf};
 
 pub struct FsScanner {}
@@ -14,7 +14,9 @@ impl FsScanner {
 
         while !dirs.is_empty() {
             let curr_dir = dirs.pop().unwrap();
-            for entry in fs::read_dir(curr_dir)? {
+            let entries = fs::read_dir(&curr_dir)
+                .with_context(|| format!("Cannot read directory {:?}", curr_dir))?;
+            for entry in entries {
                 let entry = entry?;
                 let path = entry.path();
                 let metadata = entry.metadata()?;

@@ -8,6 +8,7 @@ pub struct Arguments {
     pub verbose: bool,
     pub debug: bool,
     pub remove_ro: bool,
+    pub report: Option<String>,
 }
 
 impl Arguments {
@@ -23,12 +24,18 @@ impl Arguments {
         let mut source: Option<String> = None;
         let mut destination: Option<String> = None;
         let mut app_name: Option<String> = None;
+        let mut report: Option<String> = None;
 
-        for arg in args {
+        let mut args = args.into_iter();
+        while let Some(arg) = args.next() {
             match arg.as_str() {
                 "-v" | "--verbose" => verbose = true,
                 "--debug" => debug = true,
                 "--remove-ro" => remove_ro = true,
+                "--report" => match args.next() {
+                    Some(file) => report = Some(file),
+                    None => return Err(anyhow::anyhow!("--report requires a file name")),
+                },
                 _ => {
                     if app_name.is_none() {
                         app_name = Some(arg.clone());
@@ -53,11 +60,14 @@ impl Arguments {
             verbose,
             debug,
             remove_ro,
+            report,
         })
     }
 
     pub fn print_usage() {
-        println!("Usage: backupcopy [-v] [--debug] [--remove-ro] <source> <destination>");
+        println!(
+            "Usage: backupcopy [-v] [--debug] [--remove-ro] [--report <file>] <source> <destination>"
+        );
     }
 }
 
@@ -79,6 +89,24 @@ mod tests {
         assert_eq!(a.source, "src");
         assert_eq!(a.destination, "dst");
         assert!(!a.verbose && !a.debug && !a.remove_ro);
+        assert_eq!(a.report, None);
+    }
+
+    #[test]
+    fn report_file() {
+        let a = parse(&["--report", "log.txt", "src", "dst"]).unwrap();
+        assert_eq!(a.report.as_deref(), Some("log.txt"));
+        assert_eq!(a.source, "src");
+        assert_eq!(a.destination, "dst");
+
+        let a = parse(&["src", "dst", "--report", "log.txt"]).unwrap();
+        assert_eq!(a.report.as_deref(), Some("log.txt"));
+    }
+
+    #[test]
+    fn report_without_file_is_an_error() {
+        let e = parse(&["src", "dst", "--report"]).unwrap_err();
+        assert!(e.to_string().contains("--report"));
     }
 
     #[test]

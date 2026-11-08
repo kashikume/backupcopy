@@ -22,7 +22,7 @@ The binary is written to `target\release\backupcopy.exe`.
 ## Usage
 
 ```
-backupcopy [-v] [--debug] [--remove-ro] <source> <destination>
+backupcopy [-v] [--debug] [--remove-ro] [--report <file>] <source> <destination>
 ```
 
 | Argument        | Meaning                                                                       |
@@ -32,6 +32,7 @@ backupcopy [-v] [--debug] [--remove-ro] <source> <destination>
 | `-v`, `--verbose` | Print the scan phases and how many items were found on each side.           |
 | `--debug`       | Print the parsed arguments.                                                   |
 | `--remove-ro`   | Clear the read-only attribute on a destination file before deleting it.      |
+| `--report <file>` | Append one line about the run to `<file>` (see [Report file](#report-file)). |
 
 Options can go anywhere on the command line. The first two other arguments are taken as source and
 destination; any further argument is an error.
@@ -39,10 +40,42 @@ destination; any further argument is an error.
 Example:
 
 ```sh
-backupcopy -v --remove-ro D:\Projects E:\Backup\Projects
+backupcopy -v --remove-ro --report E:\Backup\report.txt D:\Projects E:\Backup\Projects
 ```
 
 There is no dry-run mode: every planned action runs straight away.
+
+When the run ends, the tool prints a summary such as
+`All done (copied 2 files, created 1 directory, deleted 0 files and 0 directories; no errors).`
+
+## Report file
+
+With `--report <file>`, every run appends exactly one line to `<file>`. The file is created if it
+doesn't exist, but its folder must exist. The line has this format:
+
+```
+<timestamp> : SUCCESS | FAILURE <source> -> <destination>: (<details>)
+```
+
+- The timestamp is local time, `YYYY-MM-DD HH:MM:SS`.
+- **SUCCESS** means the run finished. The details give what was done and how many single files or
+  directories failed, for example:
+
+  ```
+  2026-11-08 13:03:22 : SUCCESS D:\Projects -> E:\Backup\Projects: (copied 1 file, created 0 directories, deleted 0 files and 0 directories; 6 errors: 5 files failed to delete in destination, 1 file failed to copy)
+  ```
+
+- **FAILURE** means the run stopped part-way, for example because a folder couldn't be read, a
+  rules file was invalid or a directory couldn't be created. The details give the error:
+
+  ```
+  2026-11-08 13:03:51 : FAILURE D:\Projects -> E:\Backup\Projects: (Cannot read directory "E:\\Backup\\Projects": The system cannot find the path specified. (os error 3))
+  ```
+
+  Errors that span several lines are joined into one, so each run adds a single line.
+
+Nothing is written when the command line itself is invalid. If the report file can't be written,
+the error is printed and the backup result is unaffected.
 
 ## How it works
 
@@ -95,7 +128,8 @@ The actions run in this order:
 3. Create the missing directories in the destination.
 4. Copy the files, printing progress as `n/total Copy "<from>" to "<to>" ... OK`.
 
-If a single file or directory can't be deleted or copied, the error is printed and the run goes on.
+If a single file or directory can't be deleted or copied, the error is printed and counted, and the
+run goes on.
 Failing to scan a tree, read a rules file, or create a directory stops the run.
 
 ## Rules files
